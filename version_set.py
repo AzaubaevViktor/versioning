@@ -4,10 +4,21 @@ __author__ = 'ktulhy'
 
 import subprocess
 import datetime
+import sys
 
 
 class Version:
     default = "0.0.0.0"
+    languages = {
+        "java":
+            """package {package};
+
+public class Version {{
+    public String version = "{version}";
+    public String date = "{_date}";
+}}
+"""
+    }
 
     def __init__(self):
         pass
@@ -71,6 +82,12 @@ class Version:
         return date
 
     def generate(self, lang, path):
+        if "java" == lang:
+            package = ".".join(path.split('/')[:-1])
+            data = self.languages[lang].format(package=package,
+                                               version=self.get_version(),
+                                               _date=self.get_date())
+            open(path, mode='w').write(data)
         pass
 
 
@@ -78,6 +95,16 @@ version = Version()
 print(version.get_version())
 print(version.get_date())
 
+argc = len(sys.argv)
+
+if 3 != argc:
+    print("Use `versioning %lang% %path%`")
+    exit(1)
+
+lang = sys.argv[1]
+path = sys.argv[2]
+
+version.generate(lang, path)
 
 # open("js/version.js", "wt").write("""var __version__ = "%s";
 # var __date__ = "%s";""" %generate_version())
