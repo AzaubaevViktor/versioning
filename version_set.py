@@ -6,38 +6,78 @@ import subprocess
 import datetime
 
 
-def generate_version():
-    proc = subprocess.Popen("git describe --long --tags", shell=True, stdout=subprocess.PIPE)
-    version_raw = proc.stdout.readline().rstrip().lstrip()
+class Version:
+    default = "0.0.0.0"
 
-    version_raw = version_raw if version_raw else "v0.0-0-0"
+    def __init__(self):
+        pass
 
-    version_raw = version_raw.split("-")
+    def parse(self, raw, version_format="{major}.{minor}.{build}.{revision}{release}"):
 
-    major, _t = version_raw[0][1:].split(".")
+        # delete first 'v'
+        raw = raw[1:] if 'v' == raw[0] else raw
 
-    minor, typ = "0", "0"
+        try:
+            major_minor_release, build, revision = raw.split("-")
+        except ValueError as e:
+            print("Incorrect tag")
+            print(e)
+            return self.default
 
-    if 'a' in _t:
-        minor, typ = _t.split("a")
-        typ = "a" + typ
-    elif 'b' in _t:
-        minor, typ = _t.split("b")
-        typ = "b" + typ
-    else:
-        minor, typ = _t, ""
+        try:
+            major, minor_release = major_minor_release.split(".")
+        except ValueError as e:
+            print("Incorrect tag")
+            print(e)
+            return self.default
 
-    # +1 because script run before commit
-    version = "%s.%s.%d%s" % (major, minor, int(version_raw[1]) + 1, typ)
+        i = 0
+        while (len(minor_release) != i) and minor_release[i].isdigit():
+            i += 1
 
-    proc = subprocess.Popen("git show -s --format='%ct'", shell=True, stdout=subprocess.PIPE)
-    date = proc.stdout.readline()
 
-    date = datetime.datetime.fromtimestamp(
-        int(date)
-    ).strftime('%d.%m.%Y')
+        minor = minor_release[:i]
+        release = minor_release[i:]
+        try:
+            version_ready = version_format.format(major=major,
+                                                  minor=minor,
+                                                  build=build,
+                                                  revision=revision,
+                                                  release="[%s]" % (release) if release else "")
+        except KeyError as e:
+            print("Incorrect version format")
+            print(e)
+            return self.default
 
-    return version, date
+        return version_ready
 
-open("js/version.js", "wt").write("""var __version__ = "%s";
-var __date__ = "%s";""" %generate_version())
+    def get_version(self):
+        proc = subprocess.Popen("git describe --long --tags", shell=True, stdout=subprocess.PIPE)
+        raw = proc.stdout.readline().rstrip().lstrip()
+        if not raw:
+            print("Something wrong with git")
+
+        raw = raw.decode("utf-8")
+
+        return self.parse(raw)
+
+    def get_date(self):
+        proc = subprocess.Popen("git show -s --format='%ct'", shell=True, stdout=subprocess.PIPE)
+        date = proc.stdout.readline()
+
+        date = datetime.datetime.fromtimestamp(
+            int(date)
+        ).strftime('%d.%m.%Y')
+        return date
+
+    def generate(self, lang, path):
+        pass
+
+
+version = Version()
+print(version.get_version())
+print(version.get_date())
+
+
+# open("js/version.js", "wt").write("""var __version__ = "%s";
+# var __date__ = "%s";""" %generate_version())
