@@ -7,6 +7,7 @@ import datetime
 import sys
 import _version
 
+
 class Version:
     default = "0.0.0.0"
     languages = {
